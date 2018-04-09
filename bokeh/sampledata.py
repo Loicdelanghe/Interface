@@ -18,3 +18,11 @@ Elsschot_leeftijd=[]
 for item in Elsschot_jaren:
     leeftijd=item-1882
     Elsschot_leeftijd.append(leeftijd)
+    
+vbC=["......Voorbeeld1.....","......Voorbeeld2.....","......Voorbeeld3.....",
+"......Voorbeeld4.....","......Voorbeeld5.....","......Voorbeeld6.....","......Voorbeeld7.....",
+"......Voorbeeld8.....","......Voorbeeld9.....","......Voorbeeld10.....","......Voorbeeld11.....",
+"......Voorbeeld12.....","......Voorbeeld13.....","......Voorbeeld14....."]
+vbE=["......Voorbeeld1.....","......Voorbeeld2.....","......Voorbeeld3.....",
+"......Voorbeeld4.....","......Voorbeeld5.....","......Voorbeeld6.....","......Voorbeeld7.....",
+"......Voorbeeld8.....","......Voorbeeld9.....","......Voorbeeld10.....","......Voorbeeld11....."]
