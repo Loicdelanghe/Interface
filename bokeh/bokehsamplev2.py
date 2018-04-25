@@ -7,11 +7,10 @@ from sklearn import datasets, linear_model
 from sklearn.metrics import mean_squared_error, r2_score
 from statistics import median
 from bokeh.models import CheckboxGroup, CustomJS
-from bokeh.plotting import figure, show, output_file
-from bokeh.layouts import row
 import numpy as np
-import sampledata
 import pandas as pd
+from bokeh.palettes import Dark2_5 as palette
+
 
 
 
@@ -24,6 +23,7 @@ df2 = pd.read_csv('Elsschot_data2.csv')
 datasets=[]
 datasets.append(df)
 datasets.append(df2)
+authors=["Claus","Elsschot"]
 
 
 def extract_score(df):
@@ -64,24 +64,18 @@ for item in datasets:
 
 
 
-
-
-
-authors=["Claus","Elsschot"]
-
-names=authors
-def trendlineslinear(Scores,Leeftijd,Jaartallen):
+def trendlineslinear(Scores,age):
     Scores=np.asarray(Scores)
-    Jaartallen=np.asarray(Leeftijd)
+    age2=np.asarray(age)
     Scores= Scores.reshape(-1,1)
-    Jaartallen = Jaartallen.reshape(-1,1)
+    age2 = age2.reshape(-1,1)
     regr = linear_model.LinearRegression()
-    regr.fit(Jaartallen, Scores)
-    prediction = regr.predict(Jaartallen)
+    regr.fit(age2, Scores)
+    prediction = regr.predict(age2)
     prediction=prediction.tolist()
 
     source_trendline = ColumnDataSource(data=dict(
-        x=[Leeftijd[0],Leeftijd[-1]],
+        x=[age[0],age[-1]],
         y=[prediction[0],prediction[-1]],
     ))
 
@@ -89,15 +83,6 @@ def trendlineslinear(Scores,Leeftijd,Jaartallen):
     Trendline=p2.line('x','y',line_width=3,source=source_trendline,color="red",legend="Trendline")
 
     return Trendline
-
-
-
-
-colorbank=["red","blue","navy","green"]
-colors=[]
-for item in authors:
-    ind=authors.index(item)
-    colors.append(colorbank[ind])
 
 
 def datatables(titels,scores):
@@ -116,19 +101,17 @@ def datatables(titels,scores):
     return data_table
 
 
+def data_plot_1(leeftijd,scores,titels,authors,a):
+    sourceline = ColumnDataSource(data=dict(
+        x=leeftijd,
+        y=scores,
+        Titel=titels,
+    ))
 
-tools2 = "pan,wheel_zoom,box_zoom,reset,save".split(',')
-hover2 = HoverTool(names=authors,tooltips=[
-        ("Titel","@Titel"),
-        ("Score","@y"),
-    ])
-tools2.append(hover2)
-tools = "pan,wheel_zoom,box_zoom,reset,save,tap".split(',')
-hover = HoverTool(tooltips=[
-    ("Titel","@Titel"),
-    ("Score","@y")
-])
-tools.append(hover)
+
+    datapunten=p1.circle('x', 'y', size=20, name=authors[a], source=sourceline,color=colors[a],legend=authors[a])
+    return datapunten
+
 
 def data_plot_2(leeftijd,scores,titels,authors,a):
     sourceline = ColumnDataSource(data=dict(
@@ -141,20 +124,48 @@ def data_plot_2(leeftijd,scores,titels,authors,a):
     datapunten=p2.circle('x', 'y', size=20, name=authors[a], source=sourceline,color=colors[a],legend=authors[a])
     return datapunten
 
-def data_plot_1(leeftijd,scores,titels,authors,a):
-    sourceline = ColumnDataSource(data=dict(
-        x=leeftijd,
-        y=scores,
-        Titel=titels,
-    ))
-    colors=["red","green","navy"]
-
-    datapunten=p1.circle('x', 'y', size=20, name=authors[a], source=sourceline,color=colors[a],legend=authors[a])
-    return datapunten
 
 
+def msq(Scores,leeftijd,jaartallen,a):
+    Scores=np.asarray(Scores[a])
+    jaartallen=np.asarray(leeftijd[a])
+    Scores= Scores.reshape(-1,1)
+    jaartallen = jaartallen.reshape(-1,1)
+    regr = linear_model.LinearRegression()
+    regr.fit(jaartallen, Scores)
+    prediction = regr.predict(jaartallen)
+    prediction=prediction.tolist()
+    msq=mean_squared_error(Scores, prediction)
+    return msq
+
+
+
+def info(authors,Score_data,a,predicted_vals):
+    mean=sum(Score_data[a])/len(Score_data[a])
+    std=np.std(Score_data[a])
+    Median=median(Score_data[a])
+    msq=predicted_vals[a]
+    pre2 = PreText(text="""                        {0}:
+
+                            Mean: {1}
+                            Standard dev: {2}
+                            Median: {3}
+                            Mean squared error = {4}""".format(authors[a],mean,std,Median,msq),
+    width=500, height=100)
+    return pre2
 
 if __name__ == '__main__':
+    colors=[]
+    [colors.append(x) for x in palette]
+    colors=colors[:len(authors)]
+
+
+    tools = "pan,wheel_zoom,box_zoom,reset,save,tap".split(',')
+    hover = HoverTool(tooltips=[
+        ("Titel","@Titel"),
+        ("Score","@y")
+    ])
+    tools.append(hover)
 
 
 
@@ -166,6 +177,7 @@ if __name__ == '__main__':
     for item in authors:
         a=authors.index(item)
         data_plot_1(year_data[a],Score_data[a],doc_data[a],authors,a)
+
     p1.legend.location = "top_left"
     p1.legend.click_policy="hide"
 
@@ -187,7 +199,7 @@ if __name__ == '__main__':
 
 
 
-    p2 = figure(plot_width=1000, plot_height=400, tools=tools2,title="Leeftijd")
+    p2 = figure(plot_width=1000, plot_height=400, tools="pan,wheel_zoom,box_zoom,reset,save".split(','),title="Leeftijd")
     p2.background_fill_color = "#dddddd"
     p2.yaxis.axis_label = "markers 1000/words"
     p2.yaxis.axis_label_standoff = 20
@@ -197,11 +209,19 @@ if __name__ == '__main__':
         data_plot_2(age_data[a],Score_data[a],doc_data[a],authors,a)
     for item in authors:
         a=authors.index(item)
-        trendlineslinear(Score_data[a],age_data[a],year_data[a])
+        trendlineslinear(Score_data[a],age_data[a])
     empty=[]
     for item in authors:
         n=authors.index(item)
         empty.append(datatables(doc_data[n],Score_data[n]))
+    predicted_vals=[]
+    for item in authors:
+        a=authors.index(item)
+        predicted_vals.append(msq(Score_data,age_data,year_data,a))
+    infos=[]
+    for item in authors:
+        a=authors.index(item)
+        infos.append(info(authors,Score_data,a,predicted_vals))
     p2.legend.location = "top_left"
     p2.legend.click_policy="hide"
 
@@ -209,7 +229,7 @@ if __name__ == '__main__':
 
 
     layout = row(column(row(p1),row(p3,p4)),row(widgetbox(empty)))
-    layout2=row(p2)
+    layout2=row(p2,widgetbox(infos))
     curdoc().add_root(layout)
     curdoc().add_root(layout2)
     tab2 = Panel(child=layout2, title="Leeftijd")
