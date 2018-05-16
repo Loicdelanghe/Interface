@@ -13,6 +13,7 @@ from bokeh.palettes import Dark2_5 as palette
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 
+
 output_file("Timeline Comparison.html")
 
 """Set of functions to read data from csv files
@@ -24,39 +25,34 @@ Column names in the functions should always correspond with column names in
 the pandas dataframe to ensure that the correct data is imported.
 """
 
-df = pd.read_csv('Claus_data2.csv')
-df2 = pd.read_csv('Elsschot_data2.csv')
+
 
 datasets = []
-datasets.append(df)
-datasets.append(df2)
-authors = ["Claus", "Elsschot"]
 
-
-def extract_score(df):
+def extract_score(df,col_name):
     score = []
-    for item in df.loc[:, "scores"]:
+    for item in df.loc[:, col_name]:
         score.append(item)
     return score
 
 
-def extract_doc(df):
+def extract_doc(df,col_name):
     doc = []
-    for item in df.loc[:, "Roman"]:
+    for item in df.loc[:, col_name]:
         doc.append(item)
     return doc
 
 
-def extract_year(df):
+def extract_year(df,col_name):
     year = []
-    for item in df.loc[:, "Jaartal"]:
+    for item in df.loc[:, col_name]:
         year.append(item)
     return year
 
 
-def extract_age(df):
+def extract_age(df,col_name):
     age = []
-    for item in df.loc[:, "leeftijd"]:
+    for item in df.loc[:, col_name]:
         age.append(item)
     return age
 
@@ -65,11 +61,6 @@ age_data = []
 year_data = []
 doc_data = []
 
-for item in datasets:
-    Score_data.append(extract_score(item))
-    age_data.append(extract_age(item))
-    year_data.append(extract_year(item))
-    doc_data.append(extract_doc(item))
 
 
 def trendlineslinear(Scores, age):
@@ -195,7 +186,7 @@ def data_plot_3(age, scores, doc_name, authors, a):
     return data_circle
 
 
-def msq(Scores, age, a):
+def msq_lin(Scores, age, a):
     Scores = np.asarray(Scores[a])
     new_age = np.asarray(age[a])
     Scores = Scores.reshape(-1, 1)
@@ -205,10 +196,12 @@ def msq(Scores, age, a):
     prediction = regr.predict(new_age)
     prediction = prediction.tolist()
     msq = mean_squared_error(Scores, prediction)
-    return msq
+    r2 = r2_score(Scores, prediction)
+    return (msq,r2)
 
 
-def info(authors, Score_data, a, predicted_vals):
+
+def info_lin(authors, Score_data, a, predicted_vals):
     """print out statistics
 
     This function presents general statistics such as mean score and
@@ -217,22 +210,42 @@ def info(authors, Score_data, a, predicted_vals):
     mean = sum(Score_data[a])/len(Score_data[a])
     std = np.std(Score_data[a])
     Median = median(Score_data[a])
-    msq = predicted_vals[a]
+    msq = predicted_vals[a][0]
+    r2 = predicted_vals[a][1]
     pre2 = PreText(text="""                        {0}:
 
                             Mean: {1}
                             Standard dev: {2}
                             Median: {3}
-                            Mean squared error = {4}""".format(authors[a],
-                                                               mean,
-                                                               std,
-                                                               Median,
-                                                               msq),
+                            Mean squared error = {4}
+                            R2 Score = {5}""".format(authors[a],
+                                                     mean,
+                                                     std,
+                                                     Median,
+                                                     msq,
+                                                     r2),
                     width=500, height=100)
     return pre2
 
 
+
 if __name__ == '__main__':
+
+    df = pd.read_csv('Claus_data2.csv')
+    df2 = pd.read_csv('Elsschot_data2.csv')
+
+    datasets.append(df)
+    datasets.append(df2)
+
+
+    col_names = ["scores","leeftijd","Jaartal","Roman"]
+    for item in datasets:
+        Score_data.append(extract_score(item,col_names[0]))
+        age_data.append(extract_age(item,col_names[1]))
+        year_data.append(extract_year(item,col_names[2]))
+        doc_data.append(extract_doc(item,col_names[3]))
+
+    authors = ["Claus", "Elsschot"]
 
     # get colors from the Bokeh palette depending on the number of authors
     colors = []
@@ -242,11 +255,12 @@ if __name__ == '__main__':
     index_authors = []
     [index_authors.append(authors.index(item)) for item in authors]
 
+
     # creates a set of empty lists that are used to store additional metrics
     # (list format to facilitate organising the layout of the plots)
     empty = []
-    predicted_vals = []
-    infos = []
+    predicted_vals_lin = []
+    infos_lin = []
     mean_score = []
 
     # define toolset and hovertool
@@ -328,14 +342,15 @@ if __name__ == '__main__':
     # constructs data tables and metrics for each author that can be displayed
     [empty.append(datatables(doc_data[a], Score_data[a]))
      for a in index_authors]
-    [predicted_vals.append(msq(Score_data, age_data, a))
+    [predicted_vals_lin.append(msq_lin(Score_data, age_data, a))
      for a in index_authors]
-    [infos.append(info(authors, Score_data, a, predicted_vals))
+    [infos_lin.append(info_lin(authors, Score_data, a, predicted_vals_lin))
      for a in index_authors]
+
 
     # organize tab and plot layout
     layout = row(column(row(p1), row(p3, p4)), row(widgetbox(empty)))
-    layout2 = column(row(p2, widgetbox(infos)), p5)
+    layout2 = column(row(p2, widgetbox(infos_lin)), p5)
     curdoc().add_root(layout)
     curdoc().add_root(layout2)
     tab2 = Panel(child=layout2, title="age")
@@ -343,3 +358,4 @@ if __name__ == '__main__':
     tabs = Tabs(tabs=[tab1, tab2])
 
     show(tabs)
+
